@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareFinder - Find Nearby Doctors</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="welcome-screen">
+        <div class="welcome-modal">
+            <h1>Find Nearby Medical Care, Instantly.</h1>
+            <p>Tell us what you're looking for, and we'll find available doctors near you.</p>
+            <input type="text" id="specialty-input" placeholder="e.g., 'Dentist', 'Cardiologist'">
+            <button id="find-care-button">Find Care Now</button>
+        </div>
+    </div>
+    <div id="map-dashboard" class="hidden">
+        <div id="results-panel">
+            <div class="results-header">
+                <h2>Results for "<span id="query-display"></span>"</h2>
+            </div>
+            <div id="results-list"></div>
+        </div>
+        <div id="map"></div>
+    </div>
+    <script src="js/main.js" defer></script>
+</body>
+</html>
