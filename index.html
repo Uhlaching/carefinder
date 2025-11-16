@@ -1,31 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CareFinder - Find Nearby Doctors</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CareFinder - Professional Doctor Finder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    body {
+        margin: 0;
+        font-family: 'Poppins', sans-serif;
+        background: #eef2f7;
+        overflow: hidden;
+    }
+
+    /* Welcome Screen */
+    #welcome-screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #5da0ff, #7be9ff);
+        animation: fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; } to { opacity: 1; }
+    }
+
+    .welcome-modal {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px);
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        width: 90%; max-width: 420px;
+        animation: slideUp 0.9s ease;
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(40px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .welcome-modal h1 {
+        font-size: 28px;
+        color: #fff;
+        margin-bottom: 10px;
+    }
+
+    .welcome-modal p {
+        font-size: 15px;
+        color: #f7f7f7;
+        margin-bottom: 20px;
+    }
+
+    #specialty-input {
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        border: none;
+        margin-bottom: 15px;
+        font-size: 15px;
+        outline: none;
+    }
+
+    #find-care-button {
+        width: 100%;
+        padding: 14px;
+        background: #0077ff;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    #find-care-button:hover {
+        background: #005fd6;
+        transform: scale(1.03);
+    }
+
+    /* Map Dashboard */
+    #map-dashboard {
+        display: flex;
+        height: 100vh;
+    }
+
+    #map {
+        flex: 1;
+    }
+
+    #results-panel {
+        width: 350px;
+        background: #ffffff;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+        padding: 20px;
+        animation: fadeIn 0.8s ease;
+    }
+
+    .results-header h2 {
+        margin-top: 0;
+        color: #333;
+    }
+
+    .result-card {
+        background: #f6f9ff;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 12px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        transition: 0.3s;
+    }
+
+    .result-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+    }
+
+    /* Hidden element */
+    .hidden { display: none; }
+</style>
 </head>
 <body>
-    <div id="welcome-screen">
-        <div class="welcome-modal">
-            <h1>Find Nearby Medical Care, Instantly.</h1>
-            <p>Tell us what you're looking for, and we'll find available doctors near you.</p>
-            <input type="text" id="specialty-input" placeholder="e.g., 'Dentist', 'Cardiologist'">
-            <button id="find-care-button">Find Care Now</button>
-        </div>
+
+<!-- Welcome Screen -->
+<div id="welcome-screen">
+    <div class="welcome-modal">
+        <h1>Find Nearby Medical Care</h1>
+        <p>Write your medical need and instantly see available doctors near you.</p>
+        <input type="text" id="specialty-input" placeholder="e.g. Dentist, Cardiologist" />
+        <button id="find-care-button">Find Care Now</button>
     </div>
-    <div id="map-dashboard" class="hidden">
-        <div id="results-panel">
-            <div class="results-header">
-                <h2>Results for "<span id="query-display"></span>"</h2>
-            </div>
-            <div id="results-list"></div>
+</div>
+
+<!-- Dashboard -->
+<div id="map-dashboard" class="hidden">
+    <div id="results-panel">
+        <div class="results-header">
+            <h2>Results for: <span id="query-display"></span></h2>
         </div>
-        <div id="map"></div>
+        <div id="results-list"></div>
     </div>
-    <script src="js/main.js" defer></script>
+    <div id="map"></div>
+</div>
+
+<script>
+    const findBtn = document.getElementById('find-care-button');
+    const welcome = document.getElementById('welcome-screen');
+    const dashboard = document.getElementById('map-dashboard');
+    const queryDisplay = document.getElementById('query-display');
+    const resultsList = document.getElementById('results-list');
+
+    findBtn.onclick = () => {
+        const query = document.getElementById('specialty-input').value.trim();
+        if (!query) return alert("Please enter a specialty!");
+
+        queryDisplay.textContent = query;
+        welcome.classList.add('hidden');
+        dashboard.classList.remove('hidden');
+
+        loadMap();
+        loadResults(query);
+    };
+
+    function loadMap() {
+        const map = L.map('map').setView([23.8103, 90.4125], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        L.marker([23.8103, 90.4125]).addTo(map).bindPopup("You Are Here").openPopup();
+    }
+
+    function loadResults(query) {
+        resultsList.innerHTML = '';
+
+        const sample = [
+            { name: "Elite Dental Care", dist: "1.2 km", rating: 4.8 },
+            { name: "City Heart Clinic", dist: "2.4 km", rating: 4.6 },
+            { name: "Healthy Life Hospital", dist: "3.1 km", rating: 4.7 }
+        ];
+
+        sample.forEach(doc => {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.innerHTML = `
+                <h3>${doc.name}</h3>
+                <p>Distance: ${doc.dist}</p>
+                <p>Rating: ⭐ ${doc.rating}</p>
+            `;
+            resultsList.appendChild(card);
+        });
+    }
+</script>
 </body>
 </html>
